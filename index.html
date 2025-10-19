@@ -1,119 +1,22 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chúc mừng ngày Phụ Nữ Việt Nam 20/10 💖</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: radial-gradient(ellipse at center, #000010 0%, #000000 100%);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      color: #ff77aa;
-      font-family: 'Poppins', sans-serif;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 1.8em;
-      margin-top: 30px;
-      text-shadow: 0 0 20px #ff99cc, 0 0 40px #ff6699, 0 0 60px #ff3366;
-      animation: glowText 2s ease-in-out infinite alternate;
-    }
-
-    @keyframes glowText {
-      from { text-shadow: 0 0 10px #ff99cc, 0 0 20px #ff6699; }
-      to { text-shadow: 0 0 30px #ffbbee, 0 0 60px #ff6699; }
-    }
-
-    .heart {
-      position: relative;
-      width: 100px;
-      height: 90px;
-      background: linear-gradient(145deg, #ff3366, #ff99cc);
-      transform: rotate(-45deg);
-      animation: heartbeat 1.5s infinite, glow 2s ease-in-out infinite alternate;
-      box-shadow: 0 0 25px #ff6699;
-    }
-
-    .heart::before,
-    .heart::after {
-      content: "";
-      position: absolute;
-      width: 100px;
-      height: 90px;
-      background: linear-gradient(145deg, #ff3366, #ff99cc);
-      border-radius: 50%;
-    }
-
-    .heart::before {
-      top: -50px;
-      left: 0;
-    }
-
-    .heart::after {
-      left: 50px;
-      top: 0;
-    }
-
-    @keyframes heartbeat {
-      0%, 40%, 80%, 100% { transform: rotate(-45deg) scale(1); }
-      20%, 60% { transform: rotate(-45deg) scale(1.2); }
-    }
-
-    @keyframes glow {
-      from { box-shadow: 0 0 10px #ff6699, 0 0 30px #ff99cc; }
-      to { box-shadow: 0 0 40px #ff99cc, 0 0 80px #ff6699; }
-    }
-
-    .star {
-      position: absolute;
-      width: 2px;
-      height: 2px;
-      background: white;
-      box-shadow: 0 0 8px white;
-      border-radius: 50%;
-      animation: fall linear infinite;
-      opacity: 0.8;
-    }
-
-    @keyframes fall {
-      0% { transform: translateY(0px) translateX(0); opacity: 1; }
-      100% { transform: translateY(100vh) translateX(30px); opacity: 0; }
-    }
-
-    audio {
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Chúc mừng ngày Phụ nữ Việt Nam 20/10 💖</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="heart"></div>
-  <h1>💖 Chúc mừng ngày Phụ Nữ Việt Nam 20/10 💖</h1>
+    <div class="heart"></div>
+    <h1 class="message">💐 Chúc mừng ngày Phụ nữ Việt Nam 20/10 💐<br>Chúc mama luôn vui vẻ và xinh đẹp 💕</h1>
 
-  <!-- Nhạc nền piano -->
-  <audio autoplay loop>
-    <source src="https://cdn.pixabay.com/download/audio/2023/04/06/audio_9d4a53c3b2.mp3?filename=river-flows-in-you-piano-cover-143157.mp3" type="audio/mpeg">
-  </audio>
+    <!-- Ngôi sao -->
+    <canvas id="stars"></canvas>
 
-  <script>
-    // Hiệu ứng sao rơi
-    const starCount = 80;
-    for (let i = 0; i < starCount; i++) {
-      const star = document.createElement('div');
-      star.classList.add('star');
-      star.style.left = Math.random() * 100 + 'vw';
-      star.style.top = Math.random() * -100 + 'vh';
-      star.style.animationDuration = 2 + Math.random() * 3 + 's';
-      star.style.animationDelay = Math.random() * 5 + 's';
-      star.style.width = star.style.height = Math.random() * 2 + 'px';
-      document.body.appendChild(star);
-    }
-  </script>
+    <!-- Nhạc nền -->
+    <audio id="bg-music" autoplay loop>
+        <source src="https://cdn.pixabay.com/audio/2022/03/15/audio_6b9f81e2a8.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="script.js"></script>
 </body>
 </html>
