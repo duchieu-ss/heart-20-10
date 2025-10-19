@@ -1,19 +1,131 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Trái tim lung linh 20/10 💖</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>💖 Chúc mừng 20/10 💖</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(circle at top, #000010, #000);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      font-family: "Poppins", sans-serif;
+    }
+
+    /* Ngôi sao */
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      z-index: 0;
+    }
+
+    /* Trái tim */
+    .heart {
+      position: relative;
+      width: 120px;
+      height: 100px;
+      background: radial-gradient(circle at 30% 30%, #ff6699, #ff004c 70%);
+      transform: rotate(-45deg);
+      animation: beat 1.3s infinite ease-in-out;
+      filter: drop-shadow(0 0 20px #ff66b2);
+    }
+
+    .heart::before,
+    .heart::after {
+      content: "";
+      position: absolute;
+      width: 120px;
+      height: 100px;
+      background: radial-gradient(circle at 30% 30%, #ff6699, #ff004c 70%);
+      border-radius: 50%;
+    }
+    .heart::before {
+      top: -60px;
+      left: 0;
+    }
+    .heart::after {
+      left: 60px;
+      top: 0;
+    }
+
+    @keyframes beat {
+      0%, 100% {
+        transform: rotate(-45deg) scale(1);
+        filter: drop-shadow(0 0 15px #ff80bf) brightness(1.1);
+      }
+      50% {
+        transform: rotate(-45deg) scale(1.2);
+        filter: drop-shadow(0 0 40px #ff33cc) brightness(1.4);
+      }
+    }
+
+    /* Dòng chữ */
+    h1 {
+      color: #ffcce6;
+      font-size: 2.2em;
+      text-align: center;
+      z-index: 1;
+      margin-top: 40px;
+      text-shadow: 0 0 10px #ff80bf, 0 0 20px #ff33cc;
+    }
+  </style>
 </head>
 <body>
-    <canvas id="stars"></canvas>
-    <div class="heart"></div>
 
-    <!-- Nhạc piano nhẹ (phiên bản miễn phí giống "River Flows in You") -->
-    <audio autoplay loop>
-        <source src="https://cdn.pixabay.com/download/audio/2022/10/24/audio_8a0d7a5cb8.mp3?filename=beautiful-piano-music-122133.mp3" type="audio/mpeg">
-    </audio>
+  <canvas id="stars"></canvas>
+  <div class="heart"></div>
+  <h1>💐 Chúc mừng ngày Phụ nữ Việt Nam 20/10 💐</h1>
 
-    <script src="script.js"></script>
+  <!-- Nhạc piano nhẹ -->
+  <audio autoplay loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/10/24/audio_8a0d7a5cb8.mp3?filename=beautiful-piano-music-122133.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    // Hiệu ứng sao rơi
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    let stars = [];
+    for (let i = 0; i < 120; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2,
+        speed: 0.3 + Math.random() * 1.2,
+        opacity: 0.7 + Math.random() * 0.3
+      });
+    }
+
+    function drawStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${star.opacity})`;
+        ctx.fill();
+        star.y += star.speed;
+        if (star.y > canvas.height) {
+          star.y = 0;
+          star.x = Math.random() * canvas.width;
+        }
+      });
+      requestAnimationFrame(drawStars);
+    }
+    drawStars();
+
+    // Cập nhật kích thước khi thay đổi cửa sổ
+    window.addEventListener("resize", () => {
+      canvas.width = innerWidth;
+      canvas.height = innerHeight;
+    });
+  </script>
+
 </body>
 </html>
