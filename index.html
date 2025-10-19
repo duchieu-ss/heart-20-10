@@ -3,106 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>💖 Chúc mừng ngày 20/10 💖</title>
+  <title>Chúc mừng ngày Phụ Nữ Việt Nam 20/10 💖</title>
   <style>
     body {
       margin: 0;
       height: 100vh;
-      background: radial-gradient(circle at center, #ffe6f9, #ffb3d9);
+      background: radial-gradient(ellipse at center, #000010 0%, #000000 100%);
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      color: #ff77aa;
       font-family: 'Poppins', sans-serif;
+      text-align: center;
     }
 
-    /* Hiệu ứng trái tim lung linh */
+    h1 {
+      font-size: 1.8em;
+      margin-top: 30px;
+      text-shadow: 0 0 20px #ff99cc, 0 0 40px #ff6699, 0 0 60px #ff3366;
+      animation: glowText 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glowText {
+      from { text-shadow: 0 0 10px #ff99cc, 0 0 20px #ff6699; }
+      to { text-shadow: 0 0 30px #ffbbee, 0 0 60px #ff6699; }
+    }
+
     .heart {
       position: relative;
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(145deg, #ff6699, #ff3366);
+      width: 100px;
+      height: 90px;
+      background: linear-gradient(145deg, #ff3366, #ff99cc);
       transform: rotate(-45deg);
-      animation: beat 1.2s infinite ease-in-out;
-      box-shadow: 0 0 40px rgba(255, 0, 100, 0.6);
+      animation: heartbeat 1.5s infinite, glow 2s ease-in-out infinite alternate;
+      box-shadow: 0 0 25px #ff6699;
     }
 
     .heart::before,
     .heart::after {
       content: "";
       position: absolute;
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(145deg, #ff6699, #ff3366);
+      width: 100px;
+      height: 90px;
+      background: linear-gradient(145deg, #ff3366, #ff99cc);
       border-radius: 50%;
-      box-shadow: 0 0 40px rgba(255, 0, 100, 0.6);
     }
 
     .heart::before {
-      top: -60px;
+      top: -50px;
       left: 0;
     }
 
     .heart::after {
+      left: 50px;
       top: 0;
-      left: 60px;
     }
 
-    @keyframes beat {
-      0%, 20%, 40%, 60%, 80%, 100% {
-        transform: scale(1) rotate(-45deg);
-        box-shadow: 0 0 40px rgba(255, 0, 100, 0.6);
-      }
-      10%, 30%, 50%, 70%, 90% {
-        transform: scale(1.3) rotate(-45deg);
-        box-shadow: 0 0 70px rgba(255, 0, 150, 0.9);
-      }
-    }
-
-    h1 {
-      color: #d63384;
-      margin-top: 50px;
-      font-size: 30px;
-      text-shadow: 0 0 15px #ff80bf;
-      animation: glow 2s infinite ease-in-out;
-      text-align: center;
+    @keyframes heartbeat {
+      0%, 40%, 80%, 100% { transform: rotate(-45deg) scale(1); }
+      20%, 60% { transform: rotate(-45deg) scale(1.2); }
     }
 
     @keyframes glow {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; text-shadow: 0 0 25px #ff99cc; }
+      from { box-shadow: 0 0 10px #ff6699, 0 0 30px #ff99cc; }
+      to { box-shadow: 0 0 40px #ff99cc, 0 0 80px #ff6699; }
     }
 
-    /* Hiệu ứng nền chớp lấp lánh */
-    .sparkle {
+    .star {
       position: absolute;
-      width: 3px;
-      height: 3px;
+      width: 2px;
+      height: 2px;
       background: white;
+      box-shadow: 0 0 8px white;
       border-radius: 50%;
-      animation: sparkle 2s infinite ease-in-out;
-      opacity: 0;
+      animation: fall linear infinite;
+      opacity: 0.8;
     }
 
-    @keyframes sparkle {
-      0%, 100% { opacity: 0; transform: scale(0.5); }
-      50% { opacity: 1; transform: scale(1.5); }
+    @keyframes fall {
+      0% { transform: translateY(0px) translateX(0); opacity: 1; }
+      100% { transform: translateY(100vh) translateX(30px); opacity: 0; }
+    }
+
+    audio {
+      display: none;
     }
   </style>
 </head>
 <body>
   <div class="heart"></div>
-  <h1>💐 Chúc mừng Ngày Phụ nữ Việt Nam 20/10 💐</h1>
+  <h1>💖 Chúc mừng ngày Phụ Nữ Việt Nam 20/10 💖</h1>
+
+  <!-- Nhạc nền piano -->
+  <audio autoplay loop>
+    <source src="https://cdn.pixabay.com/download/audio/2023/04/06/audio_9d4a53c3b2.mp3?filename=river-flows-in-you-piano-cover-143157.mp3" type="audio/mpeg">
+  </audio>
 
   <script>
-    // Hiệu ứng lấp lánh ngẫu nhiên
-    for (let i = 0; i < 40; i++) {
-      let star = document.createElement('div');
-      star.classList.add('sparkle');
+    // Hiệu ứng sao rơi
+    const starCount = 80;
+    for (let i = 0; i < starCount; i++) {
+      const star = document.createElement('div');
+      star.classList.add('star');
       star.style.left = Math.random() * 100 + 'vw';
-      star.style.top = Math.random() * 100 + 'vh';
-      star.style.animationDelay = Math.random() * 2 + 's';
+      star.style.top = Math.random() * -100 + 'vh';
+      star.style.animationDuration = 2 + Math.random() * 3 + 's';
+      star.style.animationDelay = Math.random() * 5 + 's';
+      star.style.width = star.style.height = Math.random() * 2 + 'px';
       document.body.appendChild(star);
     }
   </script>
