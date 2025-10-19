@@ -1,32 +1,23 @@
 body {
     margin: 0;
-    height: 100vh;
-    background-color: black;
     overflow: hidden;
+    background: black;
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
+    height: 100vh;
 }
 
-.message {
-    color: #ffb6c1;
-    text-align: center;
-    font-size: 2em;
-    text-shadow: 0 0 15px #ff66b2, 0 0 30px #ff1493;
-    margin-top: 20px;
-    font-family: 'Comic Sans MS', cursive;
-}
-
-/* Trái tim */
+/* Trái tim lấp lánh */
 .heart {
     position: relative;
     width: 100px;
     height: 90px;
-    background: radial-gradient(circle at 30% 30%, #ff99cc, #ff0066);
+    background: radial-gradient(circle at 30% 30%, #ff66b2, #ff004c 60%);
     transform: rotate(-45deg);
-    animation: pulse 1s infinite;
-    box-shadow: 0 0 20px #ff4da6, 0 0 40px #ff66b2;
+    animation: pulse 1.2s infinite ease-in-out;
+    box-shadow: 0 0 25px #ff1493, 0 0 60px #ff66cc;
+    filter: drop-shadow(0 0 20px #ff66cc);
 }
 .heart::before,
 .heart::after {
@@ -34,7 +25,7 @@ body {
     position: absolute;
     width: 100px;
     height: 90px;
-    background: radial-gradient(circle at 30% 30%, #ff99cc, #ff0066);
+    background: radial-gradient(circle at 30% 30%, #ff66b2, #ff004c 60%);
     border-radius: 50%;
 }
 .heart::before {
@@ -46,6 +37,6 @@ body {
     top: 0;
 }
 @keyframes pulse {
-    0%, 100% { transform: rotate(-45deg) scale(1); }
-    50% { transform: rotate(-45deg) scale(1.2); }
+    0%, 100% { transform: rotate(-45deg) scale(1); opacity: 0.9; }
+    50% { transform: rotate(-45deg) scale(1.2); opacity: 1; }
 }
