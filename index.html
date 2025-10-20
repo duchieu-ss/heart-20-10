@@ -1,295 +1,69 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Trái tim lấp lánh rõ - Chúc mừng 20/10</title>
-<style>
-  html,body{
-    height:100%;
-    margin:0;
-    background: radial-gradient(circle at 20% 20%, #050007 0%, #000000 60%);
-    overflow:hidden;
-    font-family: "Poppins", system-ui, sans-serif;
-  }
-  canvas{ position:fixed; inset:0; display:block; z-index:0; }
-  .label{
-    position:fixed;
-    left:50%;
-    bottom:6%;
-    transform:translateX(-50%);
-    color:#ffd6f8;
-    font-size:22px;
-    text-shadow:0 0 12px #ff8bd6, 0 0 28px rgba(255,120,200,0.25);
-    z-index:2;
-    pointer-events:none;
-  }
-  /* small hint */
-  .hint{position:fixed; left:10px; top:10px; color:rgba(255,200,230,0.5); font-size:13px; z-index:2}
-</style>
-</head>
-<body>
-<canvas id="c"></canvas>
-<div class="label">💐 Chúc mừng ngày 20/10 💐</div>
-<div class="hint">Click/tap để tái tạo</div>
+import pygame, math, random, sys
+pygame.init()
 
-<script>
-/* Improved particle fountain -> dense shimmering heart
-   Goals:
-   - stronger attraction to dense heart targets (fast convergence)
-   - larger target count (outline + fill) => heart looks solid
-   - additive blend & glow effects for bright shimmer
-   - layered drawing: faint trails, bright rim, core bloom
-*/
+# Kích thước cửa sổ
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("💖 Chúc mừng ngày 20/10 💖")
 
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d', { alpha: true });
-let W = canvas.width = innerWidth;
-let H = canvas.height = innerHeight;
+# Màu và font
+font = pygame.font.SysFont("Segoe Script", 48, bold=True)
+text_color = (255, 100, 200)
+heart_color = (255, 0, 100)
 
-addEventListener('resize', ()=>{ W = canvas.width = innerWidth; H = canvas.height = innerHeight; buildTargets(); });
+# Hiệu ứng sao rơi
+stars = [{"x": random.randint(0, WIDTH), "y": random.randint(0, HEIGHT),
+          "speed": random.uniform(0.5, 2.5)} for _ in range(120)]
 
-/* ==== heart geometry ==== */
-function heartXY(t){
-  const x = 16 * Math.pow(Math.sin(t), 3);
-  const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-  return {x, y};
-}
+clock = pygame.time.Clock()
 
-let targets = [];
-function buildTargets(){
-  targets = [];
-  const scale = Math.min(W,H) / 72; // bigger scale makes heart larger
-  // outline dense sampling
-  const outline = [];
-  const samples = 800;
-  for(let i=0;i<samples;i++){
-    const t = (i/samples) * Math.PI * 2;
-    const p = heartXY(t);
-    outline.push({x: p.x*scale, y: -p.y*scale});
-  }
-  // create many interior points by lerping outline points towards center
-  const fillCount = Math.floor(Math.max(1600, (W*H)/900)); // more on larger screens
-  for(let i=0;i<fillCount;i++){
-    const a = outline[Math.floor(Math.random()*outline.length)];
-    // pull a bit toward center to get interior density
-    const shrink = 0.2 + Math.random()*0.95; // favor interior too
-    targets.push({ x: a.x * shrink + W/2, y: a.y * shrink + H*0.36 });
-  }
-  // also sample rim points heavier for bright outline
-  for(let i=0;i<Math.floor(fillCount*0.06); i++){
-    const s = outline[Math.floor(Math.random()*outline.length)];
-    const rimNoise = 1 + Math.random()*0.18;
-    targets.push({ x: s.x * rimNoise + W/2, y: s.y * rimNoise + H*0.36, rim:true });
-  }
-}
-buildTargets();
+# Hàm vẽ trái tim lung linh
+def draw_heart(surface, t, pulse):
+    for i in range(1000):
+        theta = i / 100 * math.pi
+        x = 16 * math.sin(theta) ** 3
+        y = 13 * math.cos(theta) - 5 * math.cos(2 * theta) - 2 * math.cos(3 * theta) - math.cos(4 * theta)
+        x = WIDTH // 2 + int(x * 15 * pulse)
+        y = HEIGHT // 2 - int(y * 15 * pulse)
+        glow = random.randint(180, 255)
+        color = (glow, 0, glow)
+        surface.set_at((x, y), color)
 
-/* ==== Particles ==== */
-const particles = [];
-const MAX_PARTICLES = Math.min(3000, Math.max(900, Math.floor(W/2))); // adapt to width
-const POOL_Y = H - Math.round(Math.max(36, H*0.05)); // spawn baseline
+# Phát nhạc nền (nếu có file nhạc piano.mp3 cùng thư mục)
+try:
+    pygame.mixer.music.load("piano.mp3")
+    pygame.mixer.music.play(-1)
+except:
+    pass  # Không bắt buộc có nhạc
 
-class Particle {
-  constructor(){
-    this.reset(true);
-  }
-  reset(initial=false){
-    // spawn around center-bottom region (the fountain)
-    const spread = Math.max(60, W*0.10);
-    this.x = W/2 + (Math.random()-0.5)*spread;
-    this.y = POOL_Y + Math.random()*30 + 6;
-    // initial upward velocity
-    this.vx = (Math.random()-0.5)*1.6;
-    this.vy = - (3.6 + Math.random()*4.6);
-    this.size = 0.7 + Math.random()*1.8;
-    this.alpha = initial ? (0.5 + Math.random()*0.5) : 0; // initial seed particles are visible
-    this.life = 0;
-    this.ttl = 5 + Math.random()*6;
-    // choose target with higher chance to be rim or fill
-    if(Math.random() < 0.92) {
-      this.target = targets[Math.floor(Math.random()*targets.length)];
-    } else {
-      this.target = null;
-    }
-    // color range: purple->pink->white for highlight
-    const hue = 285 + Math.random()*40; // 285..325
-    const light = 55 + Math.random()*30;
-    this.color = `hsla(${hue},95%,${light}%,`;
-    this.wob = (Math.random()-0.5)*0.6;
-    this.arrived = false;
-  }
-  update(dt){
-    this.life += dt;
-    // gravity
-    this.vy += 0.04 * dt;
-    // attract stronger when moving upward or near target
-    if(this.target){
-      const tx = this.target.x, ty = this.target.y;
-      const dx = tx - this.x, dy = ty - this.y;
-      const d2 = dx*dx + dy*dy;
-      // attraction strength tuned to give fast convergence but not jitter
-      const strength = 0.004 + (1e4 / (200 + d2)) * 0.00018; // tuned empirically
-      this.vx += dx * strength * dt + (Math.random()-0.5)*0.02;
-      this.vy += dy * strength * dt + (Math.random()-0.5)*0.02;
-    } else {
-      this.vx += (Math.random()-0.5)*0.02;
-    }
-    // update pos
-    this.x += this.vx * dt * 0.7;
-    this.y += this.vy * dt * 0.7;
-    // alpha fade in/out
-    if(this.alpha < 1) this.alpha += 0.05 * dt;
-    if(this.life > this.ttl) this.alpha -= 0.02 * dt;
-    // recycle if gone
-    if(this.y > H + 60 || this.alpha <= 0) this.reset();
-  }
-  draw(ctx){
-    ctx.save();
-    ctx.beginPath();
-    // core bright dot
-    const a = Math.max(0.04, this.alpha*0.9);
-    ctx.fillStyle = this.color + (0.6*a) + ')';
-    ctx.shadowBlur = 8 + Math.random()*18;
-    ctx.shadowColor = '#ffd6ff';
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, a);
-    ctx.arc(this.x, this.y, this.size * (1 + Math.random()*0.8), 0, Math.PI*2);
-    ctx.fill();
-    // tiny white sparkle centre
-    ctx.beginPath();
-    ctx.fillStyle = `rgba(255,255,255,${0.08 + a*0.5})`;
-    ctx.arc(this.x + (Math.random()-0.5)*0.6, this.y + (Math.random()-0.5)*0.6, this.size*0.45, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-  }
-}
+# Vòng lặp chính
+t = 0
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
 
-/* prefill some particles */
-for(let i=0;i< Math.floor(MAX_PARTICLES*0.35); i++) particles.push(new Particle());
+    screen.fill((10, 10, 20))  # nền đen xanh tím
 
-/* spawn control */
-let spawnAcc = 0;
-function spawn(dt){
-  const baseRate = 140; // controls intensity; reduce for low-power devices
-  spawnAcc += dt * baseRate;
-  while(spawnAcc > 1){
-    if(particles.length < MAX_PARTICLES) particles.push(new Particle());
-    spawnAcc -= 1;
-  }
-}
+    # Vẽ sao rơi
+    for s in stars:
+        s["y"] += s["speed"]
+        if s["y"] > HEIGHT:
+            s["y"] = 0
+            s["x"] = random.randint(0, WIDTH)
+        pygame.draw.circle(screen, (255, 255, 255), (int(s["x"]), int(s["y"])), 1)
 
-/* draw rim outline brighter for clarity */
-function drawRim(ctx){
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  for(let i=0;i<targets.length;i+=8){
-    const t = targets[i];
-    // slightly emphasize rim points (some targets have 'rim' property)
-    const r = (t.rim) ? (1.6 + Math.random()*2.4) : (0.4 + Math.random()*1.2);
-    ctx.beginPath();
-    ctx.fillStyle = `rgba(255,245,255,${0.03 + (t.rim?0.12:0.02)})`;
-    ctx.shadowColor = '#ffd6ff';
-    ctx.shadowBlur = 18;
-    ctx.arc(t.x, t.y, r, 0, Math.PI*2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
+    # Trái tim đập
+    pulse = 1 + 0.05 * math.sin(t)
+    draw_heart(screen, t, pulse)
 
-/* pool glow and reflection */
-function drawPool(ctx){
-  const cx = W/2, py = POOL_Y + 12;
-  const radX = Math.min(W*0.28, 260);
-  const grd = ctx.createRadialGradient(cx, py, 10, cx, py, radX);
-  grd.addColorStop(0, 'rgba(255,200,240,0.14)');
-  grd.addColorStop(0.4, 'rgba(255,150,210,0.06)');
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = grd;
-  ctx.beginPath();
-  ctx.ellipse(cx, py, radX, 30, 0, 0, Math.PI*2);
-  ctx.fill();
-}
+    # Dòng chữ lung linh
+    glow = int(128 + 127 * abs(math.sin(t / 2)))
+    text = font.render("Chúc mừng ngày 20/10", True, (255, glow, 200))
+    rect = text.get_rect(center=(WIDTH // 2, HEIGHT - 80))
+    screen.blit(text, rect)
 
-/* bloom center if dense */
-function drawBloomIfDense(ctx){
-  // count particles near center
-  const cx = W/2, cy = H*0.36;
-  let near = 0;
-  const radCheck = Math.min(W,H) / 7;
-  for(let p of particles){
-    const dx = p.x - cx, dy = p.y - cy;
-    if(dx*dx + dy*dy < radCheck*radCheck) near++;
-  }
-  const density = near / Math.max(1, targets.length);
-  if(density > 0.06){
-    const radius = Math.min(W,H)/3.2;
-    const g = ctx.createRadialGradient(cx,cy,10,cx,cy,radius);
-    g.addColorStop(0, 'rgba(255,230,255,0.20)');
-    g.addColorStop(0.3, 'rgba(255,160,220,0.08)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = g;
-    ctx.fillRect(cx-radius, cy-radius, radius*2, radius*2);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-}
-
-/* main loop */
-let last = performance.now();
-function loop(now){
-  const dt = Math.min(1/25, (now - last) / 16.666);
-  last = now;
-
-  // gentle fade to keep trails but not smear too much
-  ctx.fillStyle = 'rgba(2,1,6,0.22)';
-  ctx.fillRect(0,0,W,H);
-
-  // spawn particles
-  spawn(dt);
-
-  // update particles
-  for(let p of particles) p.update(dt);
-
-  // sort by y for depth
-  particles.sort((a,b)=> a.y - b.y);
-
-  // draw particles (mid layer)
-  for(let p of particles){
-    // draw main particle
-    p.draw(ctx);
-  }
-
-  // draw bright rim points outline to make heart shape crisp
-  drawRim(ctx);
-
-  // bloom center if dense
-  drawBloomIfDense(ctx);
-
-  // pool and reflections
-  drawPool(ctx);
-
-  requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
-
-/* click/tap to re-sample targets (restart formation) */
-window.addEventListener('click', ()=>{
-  buildTargets();
-  // reassign targets for many particles to make quick reform
-  for(let i=0;i<particles.length;i++){
-    if(Math.random() < 0.92) particles[i].target = targets[Math.floor(Math.random()*targets.length)];
-    else particles[i].target = null;
-    // toss some particles up from pool to "burst"
-    particles[i].y = POOL_Y + Math.random()*40;
-    particles[i].vx = (Math.random()-0.5)*2;
-    particles[i].vy = - (3 + Math.random()*5);
-    particles[i].alpha = 0.6;
-  }
-});
-</script>
-</body>
-</html>
-
+    pygame.display.flip()
+    t += 0.1
+    clock.tick(60)
