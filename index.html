@@ -1,264 +1,295 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Trái tim hạt - Chúc mừng 20/10</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Trái tim lấp lánh rõ - Chúc mừng 20/10</title>
 <style>
-  html,body{height:100%;margin:0;background:#070007;overflow:hidden;font-family:Segoe UI, Poppins, sans-serif}
-  canvas{display:block;position:fixed;left:0;top:0}
+  html,body{
+    height:100%;
+    margin:0;
+    background: radial-gradient(circle at 20% 20%, #050007 0%, #000000 60%);
+    overflow:hidden;
+    font-family: "Poppins", system-ui, sans-serif;
+  }
+  canvas{ position:fixed; inset:0; display:block; z-index:0; }
   .label{
-    position:fixed;left:50%;bottom:6%;transform:translateX(-50%);
-    color:#ffd6f8;font-size:24px;text-shadow:0 0 12px #ff8bd6,0 0 28px rgba(255,120,200,0.25);
+    position:fixed;
+    left:50%;
+    bottom:6%;
+    transform:translateX(-50%);
+    color:#ffd6f8;
+    font-size:22px;
+    text-shadow:0 0 12px #ff8bd6, 0 0 28px rgba(255,120,200,0.25);
+    z-index:2;
     pointer-events:none;
   }
+  /* small hint */
+  .hint{position:fixed; left:10px; top:10px; color:rgba(255,200,230,0.5); font-size:13px; z-index:2}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div class="label">💐 Chúc mừng ngày 20/10 💐</div>
+<div class="hint">Click/tap để tái tạo</div>
 
 <script>
-/* Particle fountain → heart cloud
-   - Particles spawn near bottom pool, shoot up, get attracted to heart targets
-   - When many particles at target => dense heart (like image)
-   - Some particles miss & fall back to pool, creating ripple/pool effect
+/* Improved particle fountain -> dense shimmering heart
+   Goals:
+   - stronger attraction to dense heart targets (fast convergence)
+   - larger target count (outline + fill) => heart looks solid
+   - additive blend & glow effects for bright shimmer
+   - layered drawing: faint trails, bright rim, core bloom
 */
 
-const c = document.getElementById('c');
-const ctx = c.getContext('2d', { alpha: true });
-let W = c.width = innerWidth, H = c.height = innerHeight;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d', { alpha: true });
+let W = canvas.width = innerWidth;
+let H = canvas.height = innerHeight;
 
-addEventListener('resize', ()=>{ W = c.width = innerWidth; H = c.height = innerHeight; buildTargets(); });
+addEventListener('resize', ()=>{ W = canvas.width = innerWidth; H = canvas.height = innerHeight; buildTargets(); });
 
-/* ================= heart parametric positions (filled area) ================= */
+/* ==== heart geometry ==== */
 function heartXY(t){
-  const x = 16 * Math.pow(Math.sin(t),3);
+  const x = 16 * Math.pow(Math.sin(t), 3);
   const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-  return {x,y};
+  return {x, y};
 }
 
-// Build target grid inside heart (dense)
 let targets = [];
 function buildTargets(){
   targets = [];
-  // scale based on min dimension
-  const scale = Math.min(W, H) / 90; // tweak for size
-  // sample param t across [0,2pi) and also create interior points
+  const scale = Math.min(W,H) / 72; // bigger scale makes heart larger
+  // outline dense sampling
   const outline = [];
-  const samples = 600;
+  const samples = 800;
   for(let i=0;i<samples;i++){
-    const t = (i/samples)*Math.PI*2;
+    const t = (i/samples) * Math.PI * 2;
     const p = heartXY(t);
     outline.push({x: p.x*scale, y: -p.y*scale});
   }
-  // create interior by lerping outline to center
-  for(let i=0;i<1200;i++){
-    const s = outline[Math.floor(Math.random()*outline.length)];
-    const shrink = 0.4 + Math.random()*0.9; // 0.4..1
-    targets.push({ x: s.x*shrink, y: s.y*shrink });
+  // create many interior points by lerping outline points towards center
+  const fillCount = Math.floor(Math.max(1600, (W*H)/900)); // more on larger screens
+  for(let i=0;i<fillCount;i++){
+    const a = outline[Math.floor(Math.random()*outline.length)];
+    // pull a bit toward center to get interior density
+    const shrink = 0.2 + Math.random()*0.95; // favor interior too
+    targets.push({ x: a.x * shrink + W/2, y: a.y * shrink + H*0.36 });
   }
-  // center offset so heart is above mid (raise a bit)
-  const cx = W/2, cy = H*0.36;
-  for(let p of targets){ p.x += cx; p.y += cy; }
+  // also sample rim points heavier for bright outline
+  for(let i=0;i<Math.floor(fillCount*0.06); i++){
+    const s = outline[Math.floor(Math.random()*outline.length)];
+    const rimNoise = 1 + Math.random()*0.18;
+    targets.push({ x: s.x * rimNoise + W/2, y: s.y * rimNoise + H*0.36, rim:true });
+  }
 }
 buildTargets();
 
-/* ================= particles ================= */
+/* ==== Particles ==== */
 const particles = [];
-const POOL_Y = H - 40; // pool vertical spawn area
-const MAX_PARTICLES = 1800;
+const MAX_PARTICLES = Math.min(3000, Math.max(900, Math.floor(W/2))); // adapt to width
+const POOL_Y = H - Math.round(Math.max(36, H*0.05)); // spawn baseline
 
-class P {
+class Particle {
   constructor(){
-    // spawn in pool area with small random x near center bottom band
-    this.reset();
+    this.reset(true);
   }
-  reset(){
-    this.x = W/2 + (Math.random()-0.5) * (W*0.15);
-    this.y = POOL_Y + Math.random()*20 + 10;
-    // initial upward velocity (fountain)
+  reset(initial=false){
+    // spawn around center-bottom region (the fountain)
+    const spread = Math.max(60, W*0.10);
+    this.x = W/2 + (Math.random()-0.5)*spread;
+    this.y = POOL_Y + Math.random()*30 + 6;
+    // initial upward velocity
     this.vx = (Math.random()-0.5)*1.6;
-    this.vy = - (3 + Math.random()*4.5);
-    this.size = 0.9 + Math.random()*1.8;
-    this.alpha = 0; // for fade in
+    this.vy = - (3.6 + Math.random()*4.6);
+    this.size = 0.7 + Math.random()*1.8;
+    this.alpha = initial ? (0.5 + Math.random()*0.5) : 0; // initial seed particles are visible
     this.life = 0;
-    this.ttl = 6 + Math.random()*6;
-    // choose target index sometimes, else wander
-    this.target = null;
-    if(Math.random() < 0.85) {
-      // pick a near-target (so many will join heart)
+    this.ttl = 5 + Math.random()*6;
+    // choose target with higher chance to be rim or fill
+    if(Math.random() < 0.92) {
       this.target = targets[Math.floor(Math.random()*targets.length)];
+    } else {
+      this.target = null;
     }
-    // color: purple-pink-white mix
-    const hue = 280 + Math.random()*30; // 280-310 purple
-    const light = 50 + Math.random()*30;
-    this.color = `hsla(${hue},90%,${light}%,`;
-    // small wobble for sparkle
-    this.wob = (Math.random()-0.5)*0.8;
+    // color range: purple->pink->white for highlight
+    const hue = 285 + Math.random()*40; // 285..325
+    const light = 55 + Math.random()*30;
+    this.color = `hsla(${hue},95%,${light}%,`;
+    this.wob = (Math.random()-0.5)*0.6;
+    this.arrived = false;
   }
   update(dt){
     this.life += dt;
-    // gravity pulling some back
-    this.vy += 0.03 * dt;
-    // attraction to target when close to top of trajectory
+    // gravity
+    this.vy += 0.04 * dt;
+    // attract stronger when moving upward or near target
     if(this.target){
-      // compute vector to target, but only start attraction when y < target.y + margin
       const tx = this.target.x, ty = this.target.y;
-      const ay = (ty - this.y);
-      const ax = (tx - this.x);
-      const d2 = ax*ax + ay*ay;
-      // stronger attraction when near (smaller d2)
-      const strength = Math.max(0, 0.0025 * (2 + (1e5/(1e2 + d2))));
-      this.vx += ax * strength * dt + (Math.random()-0.5)*0.02;
-      this.vy += ay * strength * dt + (Math.random()-0.5)*0.02;
+      const dx = tx - this.x, dy = ty - this.y;
+      const d2 = dx*dx + dy*dy;
+      // attraction strength tuned to give fast convergence but not jitter
+      const strength = 0.004 + (1e4 / (200 + d2)) * 0.00018; // tuned empirically
+      this.vx += dx * strength * dt + (Math.random()-0.5)*0.02;
+      this.vy += dy * strength * dt + (Math.random()-0.5)*0.02;
     } else {
-      // little drift
       this.vx += (Math.random()-0.5)*0.02;
     }
-
     // update pos
     this.x += this.vx * dt * 0.7;
     this.y += this.vy * dt * 0.7;
-
     // alpha fade in/out
-    if(this.alpha < 1) this.alpha += 0.04 * dt;
+    if(this.alpha < 1) this.alpha += 0.05 * dt;
     if(this.life > this.ttl) this.alpha -= 0.02 * dt;
-
-    // if fallen below pool -> reset
-    if(this.y > H + 50 || this.alpha <= 0) this.reset();
+    // recycle if gone
+    if(this.y > H + 60 || this.alpha <= 0) this.reset();
   }
   draw(ctx){
     ctx.save();
     ctx.beginPath();
-    ctx.fillStyle = this.color + (0.6*this.alpha) + ')';
-    // glow
-    ctx.shadowBlur = 10 + Math.random()*15;
-    ctx.shadowColor = '#ffb0ff';
-    ctx.globalAlpha = Math.max(0.06, this.alpha * 0.95);
-    ctx.arc(this.x, this.y, this.size*(1 + Math.random()*0.6), 0, Math.PI*2);
+    // core bright dot
+    const a = Math.max(0.04, this.alpha*0.9);
+    ctx.fillStyle = this.color + (0.6*a) + ')';
+    ctx.shadowBlur = 8 + Math.random()*18;
+    ctx.shadowColor = '#ffd6ff';
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.arc(this.x, this.y, this.size * (1 + Math.random()*0.8), 0, Math.PI*2);
+    ctx.fill();
+    // tiny white sparkle centre
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,255,255,${0.08 + a*0.5})`;
+    ctx.arc(this.x + (Math.random()-0.5)*0.6, this.y + (Math.random()-0.5)*0.6, this.size*0.45, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
 }
 
-/* spawn interval */
+/* prefill some particles */
+for(let i=0;i< Math.floor(MAX_PARTICLES*0.35); i++) particles.push(new Particle());
+
+/* spawn control */
 let spawnAcc = 0;
 function spawn(dt){
-  // adapt spawn rate with screen size
-  const rate = Math.min(120, Math.floor(W/8)); // per second-ish
-  spawnAcc += dt * rate;
+  const baseRate = 140; // controls intensity; reduce for low-power devices
+  spawnAcc += dt * baseRate;
   while(spawnAcc > 1){
-    if(particles.length < MAX_PARTICLES) particles.push(new P());
+    if(particles.length < MAX_PARTICLES) particles.push(new Particle());
     spawnAcc -= 1;
   }
 }
 
-/* pool ripple effect (simple) */
+/* draw rim outline brighter for clarity */
+function drawRim(ctx){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for(let i=0;i<targets.length;i+=8){
+    const t = targets[i];
+    // slightly emphasize rim points (some targets have 'rim' property)
+    const r = (t.rim) ? (1.6 + Math.random()*2.4) : (0.4 + Math.random()*1.2);
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,245,255,${0.03 + (t.rim?0.12:0.02)})`;
+    ctx.shadowColor = '#ffd6ff';
+    ctx.shadowBlur = 18;
+    ctx.arc(t.x, t.y, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* pool glow and reflection */
 function drawPool(ctx){
-  const grd = ctx.createRadialGradient(W/2, POOL_Y+12, 10, W/2, POOL_Y+12, 220);
-  grd.addColorStop(0, 'rgba(255,160,230,0.18)');
-  grd.addColorStop(1, 'rgba(10,4,20,0.0)');
+  const cx = W/2, py = POOL_Y + 12;
+  const radX = Math.min(W*0.28, 260);
+  const grd = ctx.createRadialGradient(cx, py, 10, cx, py, radX);
+  grd.addColorStop(0, 'rgba(255,200,240,0.14)');
+  grd.addColorStop(0.4, 'rgba(255,150,210,0.06)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = grd;
   ctx.beginPath();
-  ctx.ellipse(W/2, POOL_Y+12, Math.min(W*0.25, 220), 30, 0, 0, Math.PI*2);
+  ctx.ellipse(cx, py, radX, 30, 0, 0, Math.PI*2);
   ctx.fill();
-  // some reflective particles on pool
-  for(let i=0;i<80;i++){
-    const x = W/2 + (Math.random()-0.5)*Math.min(W*0.24,220);
-    const y = POOL_Y + 6 + Math.random()*10;
-    ctx.fillStyle = `rgba(255,230,255,${0.02 + Math.random()*0.06})`;
-    ctx.beginPath();
-    ctx.arc(x,y, Math.random()*1.6,0,Math.PI*2);
-    ctx.fill();
+}
+
+/* bloom center if dense */
+function drawBloomIfDense(ctx){
+  // count particles near center
+  const cx = W/2, cy = H*0.36;
+  let near = 0;
+  const radCheck = Math.min(W,H) / 7;
+  for(let p of particles){
+    const dx = p.x - cx, dy = p.y - cy;
+    if(dx*dx + dy*dy < radCheck*radCheck) near++;
+  }
+  const density = near / Math.max(1, targets.length);
+  if(density > 0.06){
+    const radius = Math.min(W,H)/3.2;
+    const g = ctx.createRadialGradient(cx,cy,10,cx,cy,radius);
+    g.addColorStop(0, 'rgba(255,230,255,0.20)');
+    g.addColorStop(0.3, 'rgba(255,160,220,0.08)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = g;
+    ctx.fillRect(cx-radius, cy-radius, radius*2, radius*2);
+    ctx.globalCompositeOperation = 'source-over';
   }
 }
 
 /* main loop */
 let last = performance.now();
 function loop(now){
-  const dt = Math.min(1/30, (now - last)/16.666); // normalized ~1 per frame
+  const dt = Math.min(1/25, (now - last) / 16.666);
   last = now;
 
-  // fade background slightly to produce motion blur trail
+  // gentle fade to keep trails but not smear too much
   ctx.fillStyle = 'rgba(2,1,6,0.22)';
   ctx.fillRect(0,0,W,H);
-
-  // subtle starfield behind
-  // draw a few faint sparkles
-  for(let i=0;i<5;i++){
-    ctx.beginPath();
-    const sx = Math.random()*W;
-    const sy = Math.random()*H*0.6;
-    const r = Math.random()*0.9;
-    ctx.fillStyle = `rgba(255,255,255,${0.02 + Math.random()*0.06})`;
-    ctx.arc(sx,sy,r,0,Math.PI*2);
-    ctx.fill();
-  }
 
   // spawn particles
   spawn(dt);
 
-  // draw particles sorted by y for depth (simple painter's algorithm)
+  // update particles
+  for(let p of particles) p.update(dt);
+
+  // sort by y for depth
   particles.sort((a,b)=> a.y - b.y);
-  for(let p of particles){ p.update(dt); p.draw(ctx); }
 
-  // draw brighter outline/heart-edge by boosting particles near target boundary
-  // optional: draw faint white shell by sampling targets density:
-  // We'll draw a soft bright outline from targets
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.beginPath();
-  for(let i=0;i<targets.length;i+=6){
-    const t = targets[i];
-    // draw small glowing point
-    ctx.fillStyle = 'rgba(255,245,255,0.06)';
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = '#ffd6ff';
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, 1.6 + Math.random()*1.6, 0, Math.PI*2);
-    ctx.fill();
-  }
-  ctx.restore();
-
-  // small bloom/glow on heart center if many particles formed (count near center)
-  // simple heuristic: count particles within a radius
-  let near = 0;
-  const cx = W/2, cy = H*0.36;
+  // draw particles (mid layer)
   for(let p of particles){
-    const dx = p.x - cx, dy = p.y - cy;
-    if(dx*dx + dy*dy < (Math.min(W,H)/7)*(Math.min(W,H)/7)) near++;
-  }
-  if(near > targets.length*0.08){
-    // draw bright bloom
-    const rad = Math.min(W,H)/4;
-    ctx.beginPath();
-    const g = ctx.createRadialGradient(cx,cy,10,cx,cy,rad);
-    g.addColorStop(0,'rgba(255,210,255,0.16)');
-    g.addColorStop(0.4,'rgba(255,160,220,0.06)');
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(cx - rad, cy - rad, rad*2, rad*2);
+    // draw main particle
+    p.draw(ctx);
   }
 
-  // draw pool
+  // draw bright rim points outline to make heart shape crisp
+  drawRim(ctx);
+
+  // bloom center if dense
+  drawBloomIfDense(ctx);
+
+  // pool and reflections
   drawPool(ctx);
 
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
 
-// restart formation on click: reassign targets (re-sample)
+/* click/tap to re-sample targets (restart formation) */
 window.addEventListener('click', ()=>{
   buildTargets();
-  for(let p of particles){
-    if(Math.random()<0.9) p.target = targets[Math.floor(Math.random()*targets.length)];
+  // reassign targets for many particles to make quick reform
+  for(let i=0;i<particles.length;i++){
+    if(Math.random() < 0.92) particles[i].target = targets[Math.floor(Math.random()*targets.length)];
+    else particles[i].target = null;
+    // toss some particles up from pool to "burst"
+    particles[i].y = POOL_Y + Math.random()*40;
+    particles[i].vx = (Math.random()-0.5)*2;
+    particles[i].vy = - (3 + Math.random()*5);
+    particles[i].alpha = 0.6;
   }
 });
-
-// initial burst: prefill some particles to make effect immediate
-for(let i=0;i<600;i++){ particles.push(new P()); }
 </script>
 </body>
 </html>
+
