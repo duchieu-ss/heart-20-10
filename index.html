@@ -2,25 +2,30 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>💖 Chúc mừng 20/10 💖</title>
+<title>💜 Chúc mừng 20/10 💜</title>
 <style>
   body {
     margin: 0;
     overflow: hidden;
-    background: radial-gradient(ellipse at center, #000015 0%, #000010 100%);
+    background: radial-gradient(circle at center, #1a002a 0%, #000010 100%);
   }
   canvas {
     display: block;
   }
   h1 {
     position: absolute;
-    top: 70%;
+    top: 75%;
     width: 100%;
     text-align: center;
     font-size: 2.5em;
-    color: #ff99ff;
-    text-shadow: 0 0 15px #ff66ff, 0 0 30px #ff33ff;
+    color: #e6b3ff;
+    text-shadow: 0 0 15px #bb66ff, 0 0 30px #cc99ff, 0 0 50px #ffccff;
     font-family: 'Segoe UI', sans-serif;
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  @keyframes glow {
+    from { text-shadow: 0 0 10px #bb66ff, 0 0 20px #cc99ff; }
+    to { text-shadow: 0 0 20px #ffb3ff, 0 0 40px #ffccff; }
   }
 </style>
 </head>
@@ -28,63 +33,74 @@
 <canvas id="heart"></canvas>
 <h1>💐 Chúc mừng ngày 20/10 💐</h1>
 <script>
-const canvas = document.getElementById('heart');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const canvas = document.getElementById("heart");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
 
-let particles = [];
-const num = 1600;
 const cx = canvas.width / 2;
 const cy = canvas.height / 2;
+const particles = [];
+const total = 1500;
+let formed = false;
 
-for (let i = 0; i < num; i++) {
-  const t = Math.PI * 2 * Math.random();
-  const r = 16 * Math.pow(Math.sin(t), 3);
-  const x = 16 * Math.pow(Math.sin(t), 3);
-  const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+for (let i = 0; i < total; i++) {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = Math.random() * Math.min(cx, cy);
   particles.push({
-    x: cx + x * 15,
-    y: cy + y * 15,
-    size: Math.random() * 2 + 1,
-    hue: 300 + Math.random() * 60,
-    alpha: 0.8 + Math.random() * 0.2,
-    speedX: (Math.random() - 0.5) * 0.6,
-    speedY: (Math.random() - 0.5) * 0.6
+    x: Math.cos(angle) * radius + cx,
+    y: Math.sin(angle) * radius + cy,
+    tx: 0,
+    ty: 0,
+    hue: 270 + Math.random() * 40,
+    alpha: 0,
   });
 }
 
-let t = 0;
+function heartFunc(t) {
+  const x = 16 * Math.pow(Math.sin(t), 3);
+  const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+  return {x, y};
+}
+
+// Đặt vị trí mục tiêu (hình trái tim)
+for (let i = 0; i < total; i++) {
+  const t = Math.random() * Math.PI * 2;
+  const {x, y} = heartFunc(t);
+  const scale = 18;
+  particles[i].tx = cx + x * scale;
+  particles[i].ty = cy - y * scale;
+}
+
+let time = 0;
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  t += 0.04;
-  const scale = 1 + 0.05 * Math.sin(t * 2);
-  
+  time += 0.02;
+
   for (let p of particles) {
-    const dx = p.x - cx;
-    const dy = p.y - cy;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const pulse = scale * (1 + 0.05 * Math.sin(dist/20 - t));
-    const x = cx + dx * pulse;
-    const y = cy + dy * pulse;
+    if (!formed) {
+      p.x += (p.tx - p.x) * 0.02;
+      p.y += (p.ty - p.y) * 0.02;
+      p.alpha += 0.01;
+      if (Math.abs(p.x - p.tx) < 0.5 && Math.abs(p.y - p.ty) < 0.5) formed = true;
+    } else {
+      const pulse = 1 + 0.05 * Math.sin(time * 3);
+      p.x = cx + (p.tx - cx) * pulse;
+      p.y = cy + (p.ty - cy) * pulse;
+    }
+
     ctx.beginPath();
     ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.alpha})`;
     ctx.shadowBlur = 15;
     ctx.shadowColor = `hsl(${p.hue},100%,80%)`;
-    ctx.arc(x, y, p.size, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
-    
-    // hiệu ứng hoa/cánh bay nhẹ
-    p.x += p.speedX;
-    p.y += p.speedY;
-    if (Math.random() < 0.01) {
-      p.speedX = (Math.random() - 0.5) * 0.6;
-      p.speedY = (Math.random() - 0.5) * 0.6;
-    }
   }
+
   requestAnimationFrame(animate);
 }
 animate();
 </script>
 </body>
 </html>
+
